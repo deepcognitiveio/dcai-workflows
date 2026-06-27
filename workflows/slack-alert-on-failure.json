@@ -1,0 +1,35 @@
+{
+  "name": "Workflow Failure → Slack Alert",
+  "description": "Monitor all workflow runs and send an instant Slack alert when any step fails, including the AI healing attempt result.",
+  "version": "1.0.0",
+  "category": "Monitoring",
+  "connectors": ["dcai", "slack"],
+  "trigger": {
+    "type": "event",
+    "source": "dcai",
+    "event": "workflow.step_failed"
+  },
+  "steps": [
+    {
+      "id": "step_1",
+      "name": "Format alert message",
+      "type": "transform",
+      "output": {
+        "message": "⚠️ Workflow step failed\n*Workflow:* {{trigger.workflow_name}}\n*Step:* {{trigger.step_name}}\n*Error:* {{trigger.error_message}}\n*AI Healing:* {{trigger.healing_attempted ? 'Attempted ✓' : 'Not triggered'}}\n*Tenant:* {{trigger.tenant_id}}\n*Time:* {{trigger.failed_at}}"
+      }
+    },
+    {
+      "id": "step_2",
+      "name": "Send Slack alert",
+      "type": "connector",
+      "connector": "slack",
+      "action": "send_message",
+      "input": {
+        "channel": "#workflow-alerts",
+        "text": "{{step_1.message}}",
+        "color": "danger"
+      }
+    }
+  ],
+  "audit_log": true
+}

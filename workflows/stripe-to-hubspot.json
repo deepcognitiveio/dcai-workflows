@@ -1,0 +1,65 @@
+{
+  "name": "Stripe Payment → HubSpot Contact Sync",
+  "description": "When a Stripe payment succeeds, automatically create or update the customer in HubSpot CRM with payment details and deal stage.",
+  "version": "1.0.0",
+  "category": "CRM & Payments",
+  "connectors": ["stripe", "hubspot"],
+  "trigger": {
+    "type": "webhook",
+    "source": "stripe",
+    "event": "payment_intent.succeeded"
+  },
+  "steps": [
+    {
+      "id": "step_1",
+      "name": "Extract customer data",
+      "type": "transform",
+      "description": "Extract email, name, and amount from Stripe payload",
+      "input": "{{trigger.data.object}}",
+      "output": {
+        "email": "{{input.receipt_email}}",
+        "amount": "{{input.amount_received / 100}}",
+        "currency": "{{input.currency | upper}}",
+        "payment_id": "{{input.id}}"
+      }
+    },
+    {
+      "id": "step_2",
+      "name": "Create/update HubSpot contact",
+      "type": "connector",
+      "connector": "hubspot",
+      "action": "upsert_contact",
+      "description": "Create contact if not exists, update if already in CRM",
+      "input": {
+        "email": "{{step_1.email}}",
+        "properties": {
+          "lifecyclestage": "customer",
+          "last_payment_amount": "{{step_1.amount}}",
+          "last_payment_currency": "{{step_1.currency}}",
+          "last_payment_id": "{{step_1.payment_id}}"
+        }
+      },
+      "ai_healing": true
+    },
+    {
+      "id": "step_3",
+      "name": "Create HubSpot deal",
+      "type": "connector",
+      "connector": "hubspot",
+      "action": "create_deal",
+      "input": {
+        "dealname": "Payment {{step_1.payment_id}}",
+        "amount": "{{step_1.amount}}",
+        "dealstage": "closedwon",
+        "contact_id": "{{step_2.contact_id}}"
+      },
+      "ai_healing": true
+    }
+  ],
+  "on_failure": {
+    "action": "ai_heal",
+    "fallback": "notify_slack"
+  },
+  "audit_log": true,
+  "rag_memory": true
+}

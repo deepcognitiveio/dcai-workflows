@@ -1,0 +1,73 @@
+{
+  "name": "Generic Webhook → Multi-destination Router",
+  "description": "Receive any inbound webhook, transform the payload, and route to multiple destinations simultaneously.",
+  "version": "1.0.0",
+  "category": "Webhooks & Routing",
+  "connectors": ["webhook", "slack", "hubspot"],
+  "trigger": {
+    "type": "webhook",
+    "source": "generic",
+    "url_pattern": "https://api.deepcognitive.io/api/webhooks/{source}/{tenant_id}"
+  },
+  "steps": [
+    {
+      "id": "step_1",
+      "name": "Validate and parse payload",
+      "type": "transform",
+      "description": "Validate HMAC signature and extract event type",
+      "signature_verification": true,
+      "output": {
+        "event_type": "{{trigger.headers.x-event-type}}",
+        "payload": "{{trigger.body}}",
+        "source": "{{trigger.params.source}}",
+        "received_at": "{{now()}}"
+      }
+    },
+    {
+      "id": "step_2",
+      "name": "Route by event type",
+      "type": "condition",
+      "branches": [
+        {
+          "condition": "{{step_1.event_type == 'payment'}}",
+          "goto": "step_3a"
+        },
+        {
+          "condition": "{{step_1.event_type == 'signup'}}",
+          "goto": "step_3b"
+        },
+        {
+          "condition": "default",
+          "goto": "step_3c"
+        }
+      ]
+    },
+    {
+      "id": "step_3a",
+      "name": "Handle payment event → HubSpot",
+      "type": "connector",
+      "connector": "hubspot",
+      "action": "create_deal",
+      "ai_healing": true
+    },
+    {
+      "id": "step_3b",
+      "name": "Handle signup event → Slack",
+      "type": "connector",
+      "connector": "slack",
+      "action": "send_message",
+      "input": {
+        "channel": "#new-signups",
+        "text": "New signup: {{step_1.payload.email}}"
+      }
+    },
+    {
+      "id": "step_3c",
+      "name": "Log unknown event",
+      "type": "log",
+      "level": "info"
+    }
+  ],
+  "audit_log": true,
+  "rag_memory": true
+}

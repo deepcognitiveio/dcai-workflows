@@ -1,0 +1,69 @@
+{
+  "name": "New User Signup → Full Onboarding Sequence",
+  "description": "When a new user signs up, provision their account, send welcome email, create CRM contact, open Jira onboarding ticket, and notify the team on Slack.",
+  "version": "1.0.0",
+  "category": "Onboarding",
+  "connectors": ["dcai", "hubspot", "jira", "slack", "resend"],
+  "trigger": {
+    "type": "event",
+    "source": "dcai",
+    "event": "tenant.created"
+  },
+  "steps": [
+    {
+      "id": "step_1",
+      "name": "Send welcome email",
+      "type": "connector",
+      "connector": "resend",
+      "action": "send_email",
+      "input": {
+        "to": "{{trigger.email}}",
+        "subject": "Welcome to dcAI Workflow OS",
+        "template": "welcome_v1"
+      }
+    },
+    {
+      "id": "step_2",
+      "name": "Create HubSpot contact",
+      "type": "connector",
+      "connector": "hubspot",
+      "action": "create_contact",
+      "input": {
+        "email": "{{trigger.email}}",
+        "firstname": "{{trigger.name}}",
+        "company": "{{trigger.company}}",
+        "lifecyclestage": "lead",
+        "hs_lead_status": "NEW"
+      },
+      "ai_healing": true
+    },
+    {
+      "id": "step_3",
+      "name": "Open Jira onboarding ticket",
+      "type": "connector",
+      "connector": "jira",
+      "action": "create_issue",
+      "input": {
+        "project": "CS",
+        "issuetype": "Task",
+        "summary": "Onboard new user: {{trigger.email}}",
+        "description": "New signup from {{trigger.company}}. Plan: Sandbox. Follow up within 48 hours.",
+        "assignee": "cs-team"
+      },
+      "ai_healing": true
+    },
+    {
+      "id": "step_4",
+      "name": "Notify team on Slack",
+      "type": "connector",
+      "connector": "slack",
+      "action": "send_message",
+      "input": {
+        "channel": "#new-signups",
+        "text": "New signup: *{{trigger.name}}* ({{trigger.email}}) from {{trigger.company}}"
+      }
+    }
+  ],
+  "parallel_steps": ["step_2", "step_3", "step_4"],
+  "audit_log": true
+}
