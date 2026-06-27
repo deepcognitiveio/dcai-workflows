@@ -1,0 +1,31 @@
+{
+  "_comment": "Copy this file to connectors/your-connector-name.json and fill in the fields",
+  "name": "Your Connector Name",
+  "description": "What this connector does in one sentence.",
+  "version": "1.0.0",
+  "auth_type": "api_key | oauth2 | basic | connection_string",
+  "base_url": "https://api.your-service.com",
+  "actions": [
+    {
+      "id": "action_id",
+      "name": "Human readable action name",
+      "method": "POST",
+      "endpoint": "/v1/resource",
+      "input_schema": {
+        "field_name": {
+          "type": "string",
+          "required": true,
+          "description": "What this field is"
+        }
+      },
+      "output_schema": {
+        "id": "string",
+        "status": "string"
+      }
+    }
+  ],
+  "webhook_support": false,
+  "ai_healing_hints": [
+    "Common error patterns and how to handle them"
+  ]
+}
